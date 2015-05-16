@@ -8,7 +8,7 @@ Add it to `Projectfile`
 
 ```crystal
 deps do
-  github "[comandeo]/crystal-memcached"
+  github "comandeo/crystal-memcached"
 end
 ```
 
