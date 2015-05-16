@@ -1,4 +1,5 @@
-# memcached
+# Crystal Memcached
+[![Build Status](https://travis-ci.org/comandeo/crystal-memcached.svg?branch=master)](https://travis-ci.org/comandeo/crystal-memcached)
 
 Pure Crystal implementation of a Memcached client (work in progress).
 
