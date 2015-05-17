@@ -62,7 +62,7 @@ module Memcached
     # By default the key is set without expiration time.
     # If you want to set TTL for the key,
     # pass TTL in seconds as *expire* parameter
-    def set(key : String, value : String, expire = 0)
+    def set(key : String, value : String, expire = 0) : Bool
       send_request(
         OPCODES["set"],
         key.bytes,
@@ -78,13 +78,13 @@ module Memcached
       @io.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["set"]
-      end
+      end || false
     end
 
     # Get single key value from memcached.
     #
     # Returns key value or *nil* if the key was not found or an error occured
-    def get(key : String)
+    def get(key : String) : String?
       send_request(
         OPCODES["get"],
         key.bytes,
@@ -106,7 +106,7 @@ module Memcached
     # Returns Hash(String, String | Nil)
     # If a key was not found or an error occured,
     # value for this key will be nil in the returned hash
-    def get_multi(keys : Array(String))
+    def get_multi(keys : Array(String)) : Hash(String, String | Nil)
       result = Hash(String, String | Nil).new
       keys.each do |key|
         result[key] = nil
@@ -144,7 +144,7 @@ module Memcached
     end
 
     # Deletes the key from memcached.
-    def delete(key : String)
+    def delete(key : String) : Bool
       send_request(
         OPCODES["delete"],
         key.bytes,
@@ -154,7 +154,7 @@ module Memcached
       @io.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["delete"]
-      end
+      end || false
     end
 
     private def read_response
