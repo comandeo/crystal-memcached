@@ -2,6 +2,7 @@ require "logger"
 require "./memcached/*"
 
 module Memcached
+  #:nodoc:
   def self.logger
     @@logger ||= begin
       logger = Logger.new(STDOUT)

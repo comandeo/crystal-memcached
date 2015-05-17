@@ -1,14 +1,34 @@
 require "socket"
 
+# This class is a client for memcached storage
+#
+# ** Usage **
+# ```crystal
+# # Require package
+# require "memcached"
+#
+# # Create client instance
+# client = Memcached::Client.new
+#
+# # Execute commands
+# client.set("key", "value")
+# client.set("another_key", "another_value")
+# client.get("key")   # "value"
+# client.get_multi(["key", "another_key"]) # { "key" => "value", "another_key" => "another_value"}
+# client.delete("key")
+# ```
 module Memcached
   class Client
+    #:nodoc:
     HEADER_SIZE = 24
 
+    #:nodoc:
     MAGICS = {
       "request"  => 0x80_u8,
       "response" => 0x81_u8
     }
 
+    #:nodoc:
     OPCODES = {
       "get"    => 0x00_u8,
       "set"    => 0x01_u8,
@@ -19,18 +39,29 @@ module Memcached
       "getkq"  => 0x0d_u8
     }
 
+    # Opens connection to memcached server
+    #
+    # **Options**
+    # * host : String - memcached host
+    # * port : Number - memcached port
     def initialize(host = "localhost", port = 11211)
       Memcached.logger.info("Connecting to #{host}:#{port}")
       @socket = TCPSocket.new(host, port)
       @io = BufferedIO.new(@socket)
     end
 
+    #:nodoc:
     def finalize
       if !@socket.nil?
         @socket.close
       end
     end
 
+    # Set key - value pair in memcached.
+    #
+    # By default the key is set without expiration time.
+    # If you want to set TTL for the key,
+    # pass TTL in seconds as *expire* parameter
     def set(key : String, value : String, expire = 0)
       send_request(
         OPCODES["set"],
@@ -50,6 +81,9 @@ module Memcached
       end
     end
 
+    # Get single key value from memcached.
+    #
+    # Returns key value or *nil* if the key was not found or an error occured
     def get(key : String)
       send_request(
         OPCODES["get"],
@@ -67,6 +101,11 @@ module Memcached
       end
     end
 
+    # Get multiple keys values from memcached.
+    #
+    # Returns Hash(String, String | Nil)
+    # If a key was not found or an error occured,
+    # value for this key will be nil in the returned hash
     def get_multi(keys : Array(String))
       result = Hash(String, String | Nil).new
       keys.each do |key|
@@ -104,6 +143,7 @@ module Memcached
       result
     end
 
+    # Deletes the key from memcached.
     def delete(key : String)
       send_request(
         OPCODES["delete"],
