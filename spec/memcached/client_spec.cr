@@ -12,6 +12,14 @@ describe Memcached::Client do
     client.get("SomeStrangeKey").should eq(nil)
   end
 
+  it "sets with expire" do
+    client = Memcached::Client.new
+    client.set("expires", "soon", 2)
+    client.get("expires").should eq("soon")
+    sleep(3)
+    client.get("expires").should eq(nil)
+  end
+
   it "gets multiple keys" do
     client = Memcached::Client.new
     client.set("key1", "value1")

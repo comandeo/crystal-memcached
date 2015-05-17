@@ -31,14 +31,17 @@ module Memcached
       end
     end
 
-    def set(key : String, value : String)
+    def set(key : String, value : String, expire = 0)
       send_request(
         OPCODES["set"],
         key.bytes,
         value.bytes,
         [
           0xde_u8, 0xad_u8, 0xbe_u8, 0xef_u8,
-          0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8
+          ((expire >> 24) & 0xFF).to_u8
+          ((expire >> 16) & 0xFF).to_u8
+          ((expire >> 8) & 0xFF).to_u8
+          (expire  & 0xFF).to_u8
         ]
       )
       @io.flush
