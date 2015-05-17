@@ -10,12 +10,13 @@ module Memcached
     }
 
     OPCODES = {
-      "get"   => 0x00_u8,
-      "set"   => 0x01_u8,
-      "getq"  => 0x09_u8,
-      "noop"  => 0x0a_u8,
-      "getk"  => 0x0c_u8,
-      "getkq" => 0x0d_u8
+      "get"    => 0x00_u8,
+      "set"    => 0x01_u8,
+      "delete" => 0x04_u8,
+      "getq"   => 0x09_u8,
+      "noop"   => 0x0a_u8,
+      "getk"   => 0x0c_u8,
+      "getkq"  => 0x0d_u8
     }
 
     def initialize(host = "localhost", port = 11211)
@@ -41,7 +42,9 @@ module Memcached
         ]
       )
       @io.flush
-      read_response.try { |response| response.successful? }
+      read_response.try do |response|
+        response.successful? && response.opcode == OPCODES["set"]
+      end
     end
 
     def get(key : String)
@@ -53,7 +56,7 @@ module Memcached
       )
       @io.flush
       read_response.try do |response|
-        if response.successful?
+        if response.successful? && response.opcode == OPCODES["get"]
           String.new(response.body)
         else
           nil
@@ -86,11 +89,29 @@ module Memcached
           return result
         when OPCODES["getkq"]
           key = String.new(response.body[0, response.key_length])
-          value = String.new(response.body[response.key_length, response.body.length - response.key_length])
+          value = String.new(
+            response.body[
+              response.key_length,
+              response.body.length - response.key_length
+            ]
+          )
           result[key] = value
         end
       end
       result
+    end
+
+    def delete(key : String)
+      send_request(
+        OPCODES["delete"],
+        key.bytes,
+        Array(UInt8).new(0),
+        Array(UInt8).new(0)
+      )
+      @io.flush
+      read_response.try do |response|
+        response.successful? && response.opcode == OPCODES["delete"]
+      end
     end
 
     private def read_response
@@ -123,11 +144,16 @@ module Memcached
       Response.new(status_code, opcode, key_length, body, extras)
     end
 
-    private def send_request(opcode : UInt8, key : Array(UInt8), value : Array(UInt8), extras : Array(UInt8))
+    private def send_request(
+      opcode : UInt8,
+      key : Array(UInt8),
+      value : Array(UInt8),
+      extras : Array(UInt8)
+    )
       extras_length = extras.length.to_u8
       key_length = key.length.to_u16
       total_length = (key.length + value.length + extras_length).to_u32
-      # Write header
+      # Header
       @io.write([
         MAGICS["request"],                              # magic 0
         opcode,                                         # opcode 1
@@ -143,6 +169,7 @@ module Memcached
         0_u8, 0_u8, 0_u8, 0_u8,                         # opaque 12, 13, 14, 15
         0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, # cas 16, 17, 18, 19, 20, 21, 22, 23
       ])
+      # Body
       if extras.length > 0
         @io.write(extras)
       end

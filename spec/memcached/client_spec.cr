@@ -25,4 +25,13 @@ describe Memcached::Client do
       "key5" => nil
     })
   end
+
+  it "deletes key" do
+    client = Memcached::Client.new
+    client.set("key", "value")
+    client.get("key").should eq("value")
+    client.delete("key").should eq(true)
+    client.get("key").should eq(nil)
+    client.delete("key").should eq(false)
+  end
 end
