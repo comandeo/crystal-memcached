@@ -38,4 +38,4 @@ TODO: Write instructions for development
 
 ## Contributors
 
-- [comandeo](https://github.com/[comandeo]) Dmitry Rybakov - creator, maintainer
+- [comandeo](https://github.com/comandeo) Dmitry Rybakov - creator, maintainer
