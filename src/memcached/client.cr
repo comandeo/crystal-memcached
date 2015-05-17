@@ -122,7 +122,8 @@ module Memcached
       end
       Memcached.logger.info("Response received")
       opcode = response_header[1]
-      key_length = response_header[2].to_u32 << 8 | response_header[3].to_u32
+      key_length = response_header[2].to_u32 << 8 |
+        response_header[3].to_u32
       extras_length = response_header[4].to_i32
       total_length = response_header[8].to_u32 << 24 |
         response_header[9].to_u32 << 16 |
@@ -167,7 +168,7 @@ module Memcached
         ((total_length >> 8) & 0xFF).to_u8              # total body 10
         (total_length & 0xFF).to_u8                     # total body 11
         0_u8, 0_u8, 0_u8, 0_u8,                         # opaque 12, 13, 14, 15
-        0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, # cas 16, 17, 18, 19, 20, 21, 22, 23
+        0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8  # cas 16, 17, 18, 19, 20, 21, 22, 23
       ])
       # Body
       if extras.length > 0

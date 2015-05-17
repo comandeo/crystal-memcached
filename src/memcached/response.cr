@@ -30,7 +30,13 @@ module Memcached
 
     getter extras
 
-    def initialize(status_code, opcode, key_length, body, extras)
+    def initialize(
+      status_code : UInt8,
+      opcode : UInt8,
+      key_length : UInt32,
+      body : Slice(UInt8),
+      extras : Slice(UInt8)
+    )
       @status_code = status_code
       @opcode = opcode
       @key_length = key_length.to_i32
