@@ -24,9 +24,24 @@ value = client.get("Key")
 
 ```
 
-## Development
+## Status
 
-TODO: Write instructions for development
+### Implemented commands
+
+* get
+* multi-get (see [here](https://code.google.com/p/memcached/wiki/BinaryProtocolRevamped#Get,_Get_Quietly,_Get_Key,_Get_Key_Quietly) for details)
+* set
+* delete
+* append
+* prepend
+
+### TODO
+
+* increment
+* decrement
+* flush
+* touch
+* take care of CAS attribute
 
 ## Contributing
 

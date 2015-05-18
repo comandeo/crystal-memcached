@@ -42,4 +42,21 @@ describe Memcached::Client do
     client.get("key").should eq(nil)
     client.delete("key").should eq(false)
   end
+
+  it "appends" do
+    client = Memcached::Client.new
+    client.set("key", "value")
+    client.get("key").should eq("value")
+    client.append("key", "andmore").should eq(true)
+    client.get("key").should eq("valueandmore")
+  end
+
+  it "prepends" do
+    client = Memcached::Client.new
+    client.set("pkey", "value")
+    client.get("pkey").should eq("value")
+    client.prepend("pkey", "somethingand").should eq(true)
+    client.get("pkey").should eq("somethingandvalue")
+  end
+
 end

@@ -30,13 +30,15 @@ module Memcached
 
     #:nodoc:
     OPCODES = {
-      "get"    => 0x00_u8,
-      "set"    => 0x01_u8,
-      "delete" => 0x04_u8,
-      "getq"   => 0x09_u8,
-      "noop"   => 0x0a_u8,
-      "getk"   => 0x0c_u8,
-      "getkq"  => 0x0d_u8
+      "get"     => 0x00_u8,
+      "set"     => 0x01_u8,
+      "delete"  => 0x04_u8,
+      "getq"    => 0x09_u8,
+      "noop"    => 0x0a_u8,
+      "getk"    => 0x0c_u8,
+      "getkq"   => 0x0d_u8,
+      "append"  => 0x0e_u8,
+      "prepend" => 0x0f_u8
     }
 
     # Opens connection to memcached server
@@ -154,6 +156,34 @@ module Memcached
       @io.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["delete"]
+      end || false
+    end
+
+    # Append value afrer an existing key value
+    def append(key : String, value : String) : Bool
+      send_request(
+        OPCODES["append"],
+        key.bytes,
+        value.bytes,
+        Array(UInt8).new(0)
+      )
+      @io.flush
+      read_response.try do |response|
+        response.successful? && response.opcode == OPCODES["append"]
+      end || false
+    end
+
+    # Prepend value before an existing key value
+    def prepend(key : String, value : String) : Bool
+      send_request(
+        OPCODES["prepend"],
+        key.bytes,
+        value.bytes,
+        Array(UInt8).new(0)
+      )
+      @io.flush
+      read_response.try do |response|
+        response.successful? && response.opcode == OPCODES["prepend"]
       end || false
     end
 
