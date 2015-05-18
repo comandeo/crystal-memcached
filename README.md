@@ -35,11 +35,11 @@ value = client.get("Key")
 * prepend
 * touch
 * flush
+* increment
+* decrement
 
 ### To be done
 
-* increment command
-* decrement command
 * data version check (CAS)
 
 ## Contributing

@@ -3,17 +3,20 @@ require "spec"
 describe Memcached::Client do
   it "sets and then gets" do
     client = Memcached::Client.new
+    client.flush
     client.set("Hello", "World").should eq(true)
     client.get("Hello").should eq("World")
   end
 
   it "does not get non existing key" do
     client = Memcached::Client.new
+    client.flush
     client.get("SomeStrangeKey").should eq(nil)
   end
 
   it "sets with expire" do
     client = Memcached::Client.new
+    client.flush
     client.set("expires", "soon", 2)
     client.get("expires").should eq("soon")
     sleep(3)
@@ -22,6 +25,7 @@ describe Memcached::Client do
 
   it "gets multiple keys" do
     client = Memcached::Client.new
+    client.flush
     client.set("key1", "value1")
     client.set("key3", "value3")
     response = client.get_multi(["key1", "key2", "key3", "key4", "key5"])
@@ -36,6 +40,7 @@ describe Memcached::Client do
 
   it "deletes key" do
     client = Memcached::Client.new
+    client.flush
     client.set("key", "value")
     client.get("key").should eq("value")
     client.delete("key").should eq(true)
@@ -45,6 +50,7 @@ describe Memcached::Client do
 
   it "appends" do
     client = Memcached::Client.new
+    client.flush
     client.set("key", "value")
     client.get("key").should eq("value")
     client.append("key", "andmore").should eq(true)
@@ -53,6 +59,7 @@ describe Memcached::Client do
 
   it "prepends" do
     client = Memcached::Client.new
+    client.flush
     client.set("pkey", "value")
     client.get("pkey").should eq("value")
     client.prepend("pkey", "somethingand").should eq(true)
@@ -61,6 +68,7 @@ describe Memcached::Client do
 
   it "touches" do
     client = Memcached::Client.new
+    client.flush
     client.set("tkey", "value", 1)
     client.touch("tkey", 10).should eq(true)
     sleep(2)
@@ -69,6 +77,7 @@ describe Memcached::Client do
 
   it "does not touch non existing key" do
     client = Memcached::Client.new
+    client.flush
     client.touch("SomeStrangeKey", 10).should eq(false)
   end
 
@@ -86,6 +95,20 @@ describe Memcached::Client do
     client.get("fdkey").should eq("value")
     sleep(3)
     client.get("fdkey").should eq(nil)
+  end
+
+  it "increments" do
+    client = Memcached::Client.new
+    client.flush
+    client.increment("ikey", 2, 5).should eq(5)
+    client.increment("ikey", 2, 0).should eq(7)
+  end
+
+  it "decrements" do
+    client = Memcached::Client.new
+    client.flush
+    client.decrement("dkey", 2, 5).should eq(5)
+    client.decrement("dkey", 2, 0).should eq(3)
   end
 
 end

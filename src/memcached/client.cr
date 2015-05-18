@@ -30,17 +30,19 @@ module Memcached
 
     #:nodoc:
     OPCODES = {
-      "get"     => 0x00_u8,
-      "set"     => 0x01_u8,
-      "delete"  => 0x04_u8,
-      "flush"   => 0x08_u8,
-      "getq"    => 0x09_u8,
-      "noop"    => 0x0a_u8,
-      "getk"    => 0x0c_u8,
-      "getkq"   => 0x0d_u8,
-      "append"  => 0x0e_u8,
-      "prepend" => 0x0f_u8,
-      "touch"   => 0x1c_u8
+      "get"       => 0x00_u8,
+      "set"       => 0x01_u8,
+      "delete"    => 0x04_u8,
+      "increment" => 0x05_u8,
+      "decrement" => 0x06_u8,
+      "flush"     => 0x08_u8,
+      "getq"      => 0x09_u8,
+      "noop"      => 0x0a_u8,
+      "getk"      => 0x0c_u8,
+      "getkq"     => 0x0d_u8,
+      "append"    => 0x0e_u8,
+      "prepend"   => 0x0f_u8,
+      "touch"     => 0x1c_u8
     }
 
     # Opens connection to memcached server
@@ -86,8 +88,6 @@ module Memcached
     end
 
     # Get single key value from memcached.
-    #
-    # Returns key value or *nil* if the key was not found or an error occured
     def get(key : String) : String?
       send_request(
         OPCODES["get"],
@@ -107,8 +107,7 @@ module Memcached
 
     # Get multiple keys values from memcached.
     #
-    # Returns Hash(String, String | Nil)
-    # If a key was not found or an error occured,
+    # If a key was not found or an error occured while getting the key,
     # value for this key will be nil in the returned hash
     def get_multi(keys : Array(String)) : Hash(String, String | Nil)
       result = Hash(String, String | Nil).new
@@ -228,6 +227,114 @@ module Memcached
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["flush"]
       end || false
+    end
+
+    # Increment key value by delta.
+    #
+    # If key does not exist, it will be set to initial_value.
+    def increment(
+      key : String,
+      delta : Number,
+      initial_value = 0,
+      expire = 0
+    ) : Int64?
+      dl = delta.to_i64
+      iv = initial_value.to_i64
+      exp = expire.to_u32
+      send_request(
+        OPCODES["increment"],
+        key.bytes,
+        Array(UInt8).new(0),
+        [
+          ((dl >> 56) & 0xFF).to_u8,
+          ((dl >> 48) & 0xFF).to_u8,
+          ((dl >> 40) & 0xFF).to_u8,
+          ((dl >> 32) & 0xFF).to_u8,
+          ((dl >> 24) & 0xFF).to_u8,
+          ((dl >> 16) & 0xFF).to_u8,
+          ((dl >> 8)  & 0xFF).to_u8,
+          ( dl         & 0xFF).to_u8,
+          ((iv >> 56) & 0xFF).to_u8,
+          ((iv >> 48) & 0xFF).to_u8,
+          ((iv >> 40) & 0xFF).to_u8,
+          ((iv >> 32) & 0xFF).to_u8,
+          ((iv >> 24) & 0xFF).to_u8,
+          ((iv >> 16) & 0xFF).to_u8,
+          ((iv >> 8)  & 0xFF).to_u8,
+          ( iv        & 0xFF).to_u8,
+          ((exp >> 24) & 0xFF).to_u8,
+          ((exp >> 16) & 0xFF).to_u8,
+          ((exp >> 8) & 0xFF).to_u8,
+          ( exp  & 0xFF).to_u8
+        ]
+      )
+      @io.flush
+      read_response.try do |response|
+        if response.successful? && response.opcode == OPCODES["increment"]
+          response.body[0].to_i64 << 56 |
+            response.body[1].to_i64 << 48 |
+            response.body[2].to_i64 << 40 |
+            response.body[3].to_i64 << 32 |
+            response.body[4].to_i64 << 24 |
+            response.body[5].to_i64 << 16 |
+            response.body[6].to_i64 << 8  |
+            response.body[7].to_i64
+        end
+      end
+    end
+
+    # Decrement key value by delta.
+    #
+    # If key does not exist, it will be set to initial_value.
+    def decrement(
+      key : String,
+      delta : Number,
+      initial_value = 0,
+      expire = 0
+    ) : Int64?
+    dl = delta.to_i64
+    iv = initial_value.to_i64
+    exp = expire.to_u32
+    send_request(
+      OPCODES["decrement"],
+      key.bytes,
+      Array(UInt8).new(0),
+      [
+        ((dl >> 56) & 0xFF).to_u8,
+        ((dl >> 48) & 0xFF).to_u8,
+        ((dl >> 40) & 0xFF).to_u8,
+        ((dl >> 32) & 0xFF).to_u8,
+        ((dl >> 24) & 0xFF).to_u8,
+        ((dl >> 16) & 0xFF).to_u8,
+        ((dl >> 8)  & 0xFF).to_u8,
+        ( dl         & 0xFF).to_u8,
+        ((iv >> 56) & 0xFF).to_u8,
+        ((iv >> 48) & 0xFF).to_u8,
+        ((iv >> 40) & 0xFF).to_u8,
+        ((iv >> 32) & 0xFF).to_u8,
+        ((iv >> 24) & 0xFF).to_u8,
+        ((iv >> 16) & 0xFF).to_u8,
+        ((iv >> 8)  & 0xFF).to_u8,
+        ( iv        & 0xFF).to_u8,
+        ((exp >> 24) & 0xFF).to_u8,
+        ((exp >> 16) & 0xFF).to_u8,
+        ((exp >> 8) & 0xFF).to_u8,
+        ( exp  & 0xFF).to_u8
+      ]
+    )
+      @io.flush
+      read_response.try do |response|
+        if response.successful? && response.opcode == OPCODES["decrement"]
+          response.body[0].to_i64 << 56 |
+            response.body[1].to_i64 << 48 |
+            response.body[2].to_i64 << 40 |
+            response.body[3].to_i64 << 32 |
+            response.body[4].to_i64 << 24 |
+            response.body[5].to_i64 << 16 |
+            response.body[6].to_i64 << 8  |
+            response.body[7].to_i64
+        end
+      end
     end
 
     private def read_response
