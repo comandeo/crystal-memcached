@@ -21,27 +21,26 @@ require "memcached"
 client = Memcached::Client.new
 client.set("Key", "Value")
 value = client.get("Key")
-
 ```
 
 ## Status
 
-### Implemented commands
+### Alerady there
 
 * get
-* multi-get (see [here](https://code.google.com/p/memcached/wiki/BinaryProtocolRevamped#Get,_Get_Quietly,_Get_Key,_Get_Key_Quietly) for details)
-* set
+* multi-get for faster getting multiple keys values (read [here](https://code.google.com/p/memcached/wiki/BinaryProtocolRevamped#Get,_Get_Quietly,_Get_Key,_Get_Key_Quietly) for details)
+* set (with or without expiration)
 * delete
 * append
 * prepend
 
-### TODO
+### To be done
 
-* increment
-* decrement
-* flush
-* touch
-* take care of CAS attribute
+* increment command
+* decrement command
+* flush command
+* touch command
+* data version check (CAS)
 
 ## Contributing
 
