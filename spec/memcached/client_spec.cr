@@ -62,9 +62,30 @@ describe Memcached::Client do
   it "touches" do
     client = Memcached::Client.new
     client.set("tkey", "value", 1)
-    client.touch("tkey", 10)
+    client.touch("tkey", 10).should eq(true)
     sleep(2)
     client.get("tkey").should eq("value")
+  end
+
+  it "does not touch non existing key" do
+    client = Memcached::Client.new
+    client.touch("SomeStrangeKey", 10).should eq(false)
+  end
+
+  it "flushes" do
+    client = Memcached::Client.new
+    client.set("fkey", "value")
+    client.flush.should eq(true)
+    client.get("fkey").should eq(nil)
+  end
+
+  it "flushes with delay" do
+    client = Memcached::Client.new
+    client.set("fdkey", "value")
+    client.flush(2).should eq(true)
+    client.get("fdkey").should eq("value")
+    sleep(3)
+    client.get("fdkey").should eq(nil)
   end
 
 end

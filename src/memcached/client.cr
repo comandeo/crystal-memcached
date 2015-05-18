@@ -33,6 +33,7 @@ module Memcached
       "get"     => 0x00_u8,
       "set"     => 0x01_u8,
       "delete"  => 0x04_u8,
+      "flush"   => 0x08_u8,
       "getq"    => 0x09_u8,
       "noop"    => 0x0a_u8,
       "getk"    => 0x0c_u8,
@@ -188,7 +189,8 @@ module Memcached
       end || false
     end
 
-    def touch(key : String, expire : Number)
+    # Update key expiration time
+    def touch(key : String, expire : Number) :Bool
       exp = expire.to_u32
       send_request(
         OPCODES["touch"],
@@ -204,6 +206,27 @@ module Memcached
       @io.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["touch"]
+      end || false
+    end
+
+    # Remove all keys from memcached.
+    #
+    # Passing delay parameter postpone the removal.
+    def flush(delay = 0_u32) : Bool
+      send_request(
+        OPCODES["flush"],
+        Array(UInt8).new(0),
+        Array(UInt8).new(0),
+        [
+          ((delay >> 24) & 0xFF).to_u8
+          ((delay >> 16) & 0xFF).to_u8
+          ((delay >> 8) & 0xFF).to_u8
+          (delay & 0xFF).to_u8
+        ]
+      )
+      @io.flush
+      read_response.try do |response|
+        response.successful? && response.opcode == OPCODES["flush"]
       end || false
     end
 
