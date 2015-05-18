@@ -59,4 +59,12 @@ describe Memcached::Client do
     client.get("pkey").should eq("somethingandvalue")
   end
 
+  it "touches" do
+    client = Memcached::Client.new
+    client.set("tkey", "value", 1)
+    client.touch("tkey", 10)
+    sleep(2)
+    client.get("tkey").should eq("value")
+  end
+
 end

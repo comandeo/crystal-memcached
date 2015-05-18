@@ -33,13 +33,13 @@ value = client.get("Key")
 * delete
 * append
 * prepend
+* touch
 
 ### To be done
 
 * increment command
 * decrement command
 * flush command
-* touch command
 * data version check (CAS)
 
 ## Contributing

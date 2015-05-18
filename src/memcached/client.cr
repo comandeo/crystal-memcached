@@ -38,7 +38,8 @@ module Memcached
       "getk"    => 0x0c_u8,
       "getkq"   => 0x0d_u8,
       "append"  => 0x0e_u8,
-      "prepend" => 0x0f_u8
+      "prepend" => 0x0f_u8,
+      "touch"   => 0x1c_u8
     }
 
     # Opens connection to memcached server
@@ -184,6 +185,25 @@ module Memcached
       @io.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["prepend"]
+      end || false
+    end
+
+    def touch(key : String, expire : Number)
+      exp = expire.to_u32
+      send_request(
+        OPCODES["touch"],
+        key.bytes,
+        Array(UInt8).new(0),
+        [
+          ((exp >> 24) & 0xFF).to_u8
+          ((exp >> 16) & 0xFF).to_u8
+          ((exp >> 8) & 0xFF).to_u8
+          (exp & 0xFF).to_u8
+        ]
+      )
+      @io.flush
+      read_response.try do |response|
+        response.successful? && response.opcode == OPCODES["touch"]
       end || false
     end
 
