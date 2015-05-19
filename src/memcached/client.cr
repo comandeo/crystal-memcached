@@ -271,14 +271,7 @@ module Memcached
       @io.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["increment"]
-          response.body[0].to_i64 << 56 |
-            response.body[1].to_i64 << 48 |
-            response.body[2].to_i64 << 40 |
-            response.body[3].to_i64 << 32 |
-            response.body[4].to_i64 << 24 |
-            response.body[5].to_i64 << 16 |
-            response.body[6].to_i64 << 8  |
-            response.body[7].to_i64
+          to_int_64(response.body)
         end
       end
     end
@@ -325,14 +318,7 @@ module Memcached
       @io.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["decrement"]
-          response.body[0].to_i64 << 56 |
-            response.body[1].to_i64 << 48 |
-            response.body[2].to_i64 << 40 |
-            response.body[3].to_i64 << 32 |
-            response.body[4].to_i64 << 24 |
-            response.body[5].to_i64 << 16 |
-            response.body[6].to_i64 << 8  |
-            response.body[7].to_i64
+          to_int_64(response.body)
         end
       end
     end
@@ -404,5 +390,17 @@ module Memcached
         @io.write(value)
       end
     end
+
+    private def to_int_64(arr : Slice(UInt8)) : Int64
+      arr[0].to_i64 << 56 |
+        arr[1].to_i64 << 48 |
+        arr[2].to_i64 << 40 |
+        arr[3].to_i64 << 32 |
+        arr[4].to_i64 << 24 |
+        arr[5].to_i64 << 16 |
+        arr[6].to_i64 << 8  |
+        arr[7].to_i64
+    end
+
   end
 end
