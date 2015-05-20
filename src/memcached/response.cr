@@ -30,18 +30,22 @@ module Memcached  #:nodoc:
 
     getter extras
 
+    getter version
+
     def initialize(
       status_code : UInt8,
       opcode : UInt8,
       key_length : UInt32,
       body : Slice(UInt8),
-      extras : Slice(UInt8)
+      extras : Slice(UInt8),
+      version : Int64
     )
       @status_code = status_code
       @opcode = opcode
       @key_length = key_length.to_i32
       @body = body
       @extras = extras
+      @version = version
     end
 
     def successful?

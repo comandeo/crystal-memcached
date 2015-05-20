@@ -68,23 +68,28 @@ module Memcached
     # By default the key is set without expiration time.
     # If you want to set TTL for the key,
     # pass TTL in seconds as *expire* parameter
-    def set(key : String, value : String, expire = 0) : Bool
+    def set(key : String, value : String, expire = 0 : Number, version = 0 : Number) : Int64?
+      ex = expire.to_u32
+      ver = version.to_i64
       send_request(
         OPCODES["set"],
         key.bytes,
         value.bytes,
         [
           0xde_u8, 0xad_u8, 0xbe_u8, 0xef_u8,
-          ((expire >> 24) & 0xFF).to_u8
-          ((expire >> 16) & 0xFF).to_u8
-          ((expire >> 8) & 0xFF).to_u8
-          (expire  & 0xFF).to_u8
-        ]
+          ((ex >> 24) & 0xFF).to_u8
+          ((ex >> 16) & 0xFF).to_u8
+          ((ex >> 8) & 0xFF).to_u8
+          ( ex  & 0xFF).to_u8
+        ],
+        ver
       )
       @io.flush
       read_response.try do |response|
-        response.successful? && response.opcode == OPCODES["set"]
-      end || false
+        if response.successful? && response.opcode == OPCODES["set"]
+          response.version
+        end
+      end
     end
 
     # Get single key value from memcached.
@@ -99,6 +104,23 @@ module Memcached
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["get"]
           String.new(response.body)
+        else
+          nil
+        end
+      end
+    end
+
+    def get_with_version(key : String)
+      send_request(
+        OPCODES["get"],
+        key.bytes,
+        Array(UInt8).new(0),
+        Array(UInt8).new(0)
+      )
+      @io.flush
+      read_response.try do |response|
+        if response.successful? && response.opcode == OPCODES["get"]
+          Tuple.new(String.new(response.body), response.version)
         else
           nil
         end
@@ -282,8 +304,8 @@ module Memcached
     def decrement(
       key : String,
       delta : Number,
-      initial_value = 0,
-      expire = 0
+      initial_value = 0 : Number,
+      expire = 0 : Number
     ) : Int64?
     dl = delta.to_i64
     iv = initial_value.to_i64
@@ -343,6 +365,7 @@ module Memcached
         extras_length: #{extras_length}, body_length: #{body_length}")
       status_code = response_header[7]
       Memcached.logger.info("Response status code: #{status_code}")
+      version = to_int_64(response_header[16, 8])
       extras = Slice(UInt8).new(extras_length)
       body = Slice(UInt8).new(body_length)
       if extras_length > 0
@@ -351,15 +374,17 @@ module Memcached
       if body_length > 0
         @socket.read(body)
       end
-      Response.new(status_code, opcode, key_length, body, extras)
+      Response.new(status_code, opcode, key_length, body, extras, version)
     end
 
     private def send_request(
       opcode : UInt8,
       key : Array(UInt8),
       value : Array(UInt8),
-      extras : Array(UInt8)
+      extras : Array(UInt8),
+      version = 0 : Int64
     )
+      v = version.to_i64
       extras_length = extras.length.to_u8
       key_length = key.length.to_u16
       total_length = (key.length + value.length + extras_length).to_u32
@@ -377,7 +402,14 @@ module Memcached
         ((total_length >> 8) & 0xFF).to_u8              # total body 10
         (total_length & 0xFF).to_u8                     # total body 11
         0_u8, 0_u8, 0_u8, 0_u8,                         # opaque 12, 13, 14, 15
-        0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8  # cas 16, 17, 18, 19, 20, 21, 22, 23
+        ((v >> 56) & 0xFF).to_u8,                       # cas 16
+        ((v >> 48) & 0xFF).to_u8,                       # cas 17
+        ((v >> 40) & 0xFF).to_u8,                       # cas 18
+        ((v >> 32) & 0xFF).to_u8,                       # cas 19
+        ((v >> 24) & 0xFF).to_u8,                       # cas 20
+        ((v >> 16) & 0xFF).to_u8,                       # cas 21
+        ((v >> 8)  & 0xFF).to_u8,                       # cas 22
+        ( v        & 0xFF).to_u8,                       # cas 23
       ])
       # Body
       if extras.length > 0

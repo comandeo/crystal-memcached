@@ -4,7 +4,7 @@ describe Memcached::Client do
   it "sets and then gets" do
     client = Memcached::Client.new
     client.flush
-    client.set("Hello", "World").should eq(true)
+    client.set("Hello", "World").should_not eq(nil)
     client.get("Hello").should eq("World")
   end
 
@@ -36,6 +36,18 @@ describe Memcached::Client do
       "key4" => nil,
       "key5" => nil
     })
+  end
+
+  it "handles version" do
+    client = Memcached::Client.new
+    client.flush
+    version = client.set("vkey", "value")
+    new_version = client.set("vkey", "new_value", version: version.not_nil!)
+    client.get_with_version("vkey").try do |response|
+      response[0].should eq("new_value")
+      response[1].should eq(new_version)
+    end
+    client.set("vkey", "another_value", version: new_version.not_nil! + 1).should eq(nil)
   end
 
   it "deletes key" do
