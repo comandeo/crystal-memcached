@@ -51,5 +51,9 @@ module Memcached  #:nodoc:
     def successful?
       status_code == STATUSES["no_error"]
     end
+
+    def status_is?(status)
+      STATUSES[status] == @status_code
+    end
   end
 end

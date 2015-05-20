@@ -68,7 +68,10 @@ module Memcached
     # By default the key is set without expiration time.
     # If you want to set TTL for the key,
     # pass TTL in seconds as *expire* parameter
-    def set(key : String, value : String, expire = 0 : Number, version = 0 : Number) : Int64?
+    # If *version* parameter is provided, it will be compared to existing key
+    # version in memcached. If versions differ, *Memcached::BadVersionException*
+    # will be raised.
+    def set(key : String, value : String, expire = 0 : Number, version = 0 : Number) : Int64
       ex = expire.to_u32
       ver = version.to_i64
       send_request(
@@ -88,8 +91,12 @@ module Memcached
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["set"]
           response.version
+        elsif response.status_is?("key_exists")
+          raise BadVersionException.new
+        else
+          raise UnsuccessfulOperationException.new
         end
-      end
+      end || raise UnsuccessfulOperationException.new
     end
 
     # Get single key value from memcached.
@@ -110,7 +117,8 @@ module Memcached
       end
     end
 
-    def get_with_version(key : String)
+    # Get single key value and its current version.
+    def get_with_version(key : String) : Tuple(String, Int64)?
       send_request(
         OPCODES["get"],
         key.bytes,

@@ -47,7 +47,13 @@ describe Memcached::Client do
       response[0].should eq("new_value")
       response[1].should eq(new_version)
     end
-    client.set("vkey", "another_value", version: new_version.not_nil! + 1).should eq(nil)
+    raised = false
+    begin
+      client.set("vkey", "another_value", version: new_version.not_nil! + 1).should eq(nil)
+    rescue Memcached::BadVersionException
+      raised = true
+    end
+    raised.should eq(true)
   end
 
   it "deletes key" do

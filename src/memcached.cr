@@ -2,6 +2,13 @@ require "logger"
 require "./memcached/*"
 
 module Memcached
+
+  class UnsuccessfulOperationException < Exception
+  end
+
+  class BadVersionException < UnsuccessfulOperationException
+  end
+
   #:nodoc:
   def self.logger
     @@logger ||= begin
