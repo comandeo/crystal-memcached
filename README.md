@@ -23,13 +23,12 @@ client.set("Key", "Value")
 value = client.get("Key")
 ```
 
-## Status
-
-### Alerady there
+## What is implemented
 
 * get
 * multi-get for faster getting multiple keys values (read [here](https://code.google.com/p/memcached/wiki/BinaryProtocolRevamped#Get,_Get_Quietly,_Get_Key,_Get_Key_Quietly) for details)
 * set (with or without expiration)
+* data version check
 * delete
 * append
 * prepend
@@ -37,10 +36,6 @@ value = client.get("Key")
 * flush
 * increment
 * decrement
-
-### To be done
-
-* data version check (CAS)
 
 ## Contributing
 
