@@ -53,7 +53,6 @@ module Memcached
     def initialize(host = "localhost", port = 11211)
       Memcached.logger.info("Connecting to #{host}:#{port}")
       @socket = TCPSocket.new(host, port)
-      @io = BufferedIO.new(@socket)
     end
 
     #:nodoc:
@@ -87,7 +86,7 @@ module Memcached
         ],
         ver
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["set"]
           response.version
@@ -107,7 +106,7 @@ module Memcached
         Array(UInt8).new(0),
         Array(UInt8).new(0)
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["get"]
           String.new(response.body)
@@ -125,7 +124,7 @@ module Memcached
         Array(UInt8).new(0),
         Array(UInt8).new(0)
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["get"]
           Tuple.new(String.new(response.body), response.version)
@@ -156,7 +155,7 @@ module Memcached
         Array(UInt8).new(0),
         Array(UInt8).new(0)
       )
-      @io.flush
+      @socket.flush
       while response = read_response
         Memcached.logger.info(String.new(response.body))
         case response.opcode
@@ -167,7 +166,7 @@ module Memcached
           value = String.new(
             response.body[
               response.key_length,
-              response.body.length - response.key_length
+              response.body.size - response.key_length
             ]
           )
           result[key] = value
@@ -184,7 +183,7 @@ module Memcached
         Array(UInt8).new(0),
         Array(UInt8).new(0)
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["delete"]
       end || false
@@ -198,7 +197,7 @@ module Memcached
         value.bytes,
         Array(UInt8).new(0)
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["append"]
       end || false
@@ -212,7 +211,7 @@ module Memcached
         value.bytes,
         Array(UInt8).new(0)
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["prepend"]
       end || false
@@ -232,7 +231,7 @@ module Memcached
           (exp & 0xFF).to_u8
         ]
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["touch"]
       end || false
@@ -253,7 +252,7 @@ module Memcached
           (delay & 0xFF).to_u8
         ]
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         response.successful? && response.opcode == OPCODES["flush"]
       end || false
@@ -298,7 +297,7 @@ module Memcached
           ( exp  & 0xFF).to_u8
         ]
       )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["increment"]
           to_int_64(response.body)
@@ -345,7 +344,7 @@ module Memcached
         ( exp  & 0xFF).to_u8
       ]
     )
-      @io.flush
+      @socket.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["decrement"]
           to_int_64(response.body)
@@ -393,11 +392,11 @@ module Memcached
       version = 0 : Int64
     )
       v = version.to_i64
-      extras_length = extras.length.to_u8
-      key_length = key.length.to_u16
-      total_length = (key.length + value.length + extras_length).to_u32
+      extras_length = extras.size.to_u8
+      key_length = key.size.to_u16
+      total_length = (key.size + value.size + extras_length).to_u32
       # Header
-      @io.write([
+      @socket.write([
         MAGICS["request"],                              # magic 0
         opcode,                                         # opcode 1
         ((key_length >> 8) & 0xFF).to_u8,               # key length 2
@@ -420,14 +419,14 @@ module Memcached
         ( v        & 0xFF).to_u8,                       # cas 23
       ])
       # Body
-      if extras.length > 0
-        @io.write(extras)
+      if extras.size > 0
+        @socket.write(extras)
       end
-      if key.length > 0
-        @io.write(key)
+      if key.size > 0
+        @socket.write(key)
       end
-      if value.length > 0
-        @io.write(value)
+      if value.size > 0
+        @socket.write(value)
       end
     end
 

@@ -111,7 +111,7 @@ describe Memcached::Client do
     client.set("fdkey", "value")
     client.flush(2).should eq(true)
     client.get("fdkey").should eq("value")
-    sleep(3)
+    sleep(5)
     client.get("fdkey").should eq(nil)
   end
 
