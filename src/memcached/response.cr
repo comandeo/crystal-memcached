@@ -4,7 +4,7 @@ module Memcached  #:nodoc:
     STATUSES = {
       "no_error" => 0x00,
       "key_not_found" => 0x01,
-      "key_exists" => 0x02
+      "key_exists" => 0x02,
       "value_too_large" => 0x03,
       "invalid_arguments" => 0x04,
       "item_not_stored" => 0x05,
@@ -20,17 +20,17 @@ module Memcached  #:nodoc:
       "temporary_failure" => 0x86
     }
 
-    getter status_code
+    getter status_code : UInt8
 
-    getter opcode
+    getter opcode : UInt8
 
-    getter key_length
+    getter key_length : Int32
 
-    getter body
+    getter body : Slice(UInt8)
 
-    getter extras
+    getter extras : Slice(UInt8)
 
-    getter version
+    getter version : Int64
 
     def initialize(
       status_code : UInt8,
