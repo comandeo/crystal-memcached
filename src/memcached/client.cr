@@ -70,7 +70,7 @@ module Memcached
     # If *version* parameter is provided, it will be compared to existing key
     # version in memcached. If versions differ, *Memcached::BadVersionException*
     # will be raised.
-    def set(key : String, value : String, expire = 0 : Number, version = 0 : Number) : Int64
+    def set(key : String, value : String, expire : Number = 0, version : Number = 0) : Int64
       ex = expire.to_u32
       ver = version.to_i64
       send_request(
@@ -79,9 +79,9 @@ module Memcached
         value.bytes,
         [
           0xde_u8, 0xad_u8, 0xbe_u8, 0xef_u8,
-          ((ex >> 24) & 0xFF).to_u8
-          ((ex >> 16) & 0xFF).to_u8
-          ((ex >> 8) & 0xFF).to_u8
+          ((ex >> 24) & 0xFF).to_u8,
+          ((ex >> 16) & 0xFF).to_u8,
+          ((ex >> 8) & 0xFF).to_u8,
           ( ex  & 0xFF).to_u8
         ],
         ver
@@ -218,16 +218,16 @@ module Memcached
     end
 
     # Update key expiration time
-    def touch(key : String, expire : Number) :Bool
+    def touch(key : String, expire : Number) : Bool
       exp = expire.to_u32
       send_request(
         OPCODES["touch"],
         key.bytes,
         Array(UInt8).new(0),
         [
-          ((exp >> 24) & 0xFF).to_u8
-          ((exp >> 16) & 0xFF).to_u8
-          ((exp >> 8) & 0xFF).to_u8
+          ((exp >> 24) & 0xFF).to_u8,
+          ((exp >> 16) & 0xFF).to_u8,
+          ((exp >> 8) & 0xFF).to_u8,
           (exp & 0xFF).to_u8
         ]
       )
@@ -246,9 +246,9 @@ module Memcached
         Array(UInt8).new(0),
         Array(UInt8).new(0),
         [
-          ((delay >> 24) & 0xFF).to_u8
-          ((delay >> 16) & 0xFF).to_u8
-          ((delay >> 8) & 0xFF).to_u8
+          ((delay >> 24) & 0xFF).to_u8,
+          ((delay >> 16) & 0xFF).to_u8,
+          ((delay >> 8) & 0xFF).to_u8,
           (delay & 0xFF).to_u8
         ]
       )
@@ -311,8 +311,8 @@ module Memcached
     def decrement(
       key : String,
       delta : Number,
-      initial_value = 0 : Number,
-      expire = 0 : Number
+      initial_value : Number = 0,
+      expire : Number = 0
     ) : Int64?
     dl = delta.to_i64
     iv = initial_value.to_i64
@@ -389,25 +389,25 @@ module Memcached
       key : Array(UInt8),
       value : Array(UInt8),
       extras : Array(UInt8),
-      version = 0 : Int64
+      version : Int64 = 0
     )
       v = version.to_i64
       extras_length = extras.size.to_u8
       key_length = key.size.to_u16
       total_length = (key.size + value.size + extras_length).to_u32
       # Header
-      @socket.write([
+      args = [
         MAGICS["request"],                              # magic 0
         opcode,                                         # opcode 1
         ((key_length >> 8) & 0xFF).to_u8,               # key length 2
         (key_length & 0xFF).to_u8,                      # key length 3
         extras_length,                                  # extra length 4
-        0_u8                                            # data type 5
+        0_u8,                                           # data type 5
         0_u8, 0_u8,                                     # vbucket 6, 7
-        ((total_length >> 24) & 0xFF).to_u8             # total body 8
-        ((total_length >> 16) & 0xFF).to_u8             # total body 9
-        ((total_length >> 8) & 0xFF).to_u8              # total body 10
-        (total_length & 0xFF).to_u8                     # total body 11
+        ((total_length >> 24) & 0xFF).to_u8,            # total body 8
+        ((total_length >> 16) & 0xFF).to_u8,            # total body 9
+        ((total_length >> 8) & 0xFF).to_u8,             # total body 10
+        (total_length & 0xFF).to_u8,                    # total body 11
         0_u8, 0_u8, 0_u8, 0_u8,                         # opaque 12, 13, 14, 15
         ((v >> 56) & 0xFF).to_u8,                       # cas 16
         ((v >> 48) & 0xFF).to_u8,                       # cas 17
@@ -417,16 +417,18 @@ module Memcached
         ((v >> 16) & 0xFF).to_u8,                       # cas 21
         ((v >> 8)  & 0xFF).to_u8,                       # cas 22
         ( v        & 0xFF).to_u8,                       # cas 23
-      ])
+      ]
+      @socket.write(Slice(UInt8).new(args.to_unsafe, args.size))
+
       # Body
       if extras.size > 0
-        @socket.write(extras)
+        @socket.write(Slice(UInt8).new(extras.to_unsafe, extras.size))
       end
       if key.size > 0
-        @socket.write(key)
+        @socket.write(Slice(UInt8).new(key.to_unsafe, key.size))
       end
       if value.size > 0
-        @socket.write(value)
+        @socket.write(Slice(UInt8).new(value.to_unsafe, value.size))
       end
     end
 

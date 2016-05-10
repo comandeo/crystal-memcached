@@ -2,6 +2,7 @@ require "logger"
 require "./memcached/*"
 
 module Memcached
+  @@logger = Memcached.new_logger
 
   class UnsuccessfulOperationException < Exception
   end
@@ -11,14 +12,16 @@ module Memcached
 
   #:nodoc:
   def self.logger
-    @@logger ||= begin
-      logger = Logger.new(STDOUT)
-      if ENV["DEBUG"]?
-        logger.level = Logger::INFO
-      else
-        logger.level = Logger::ERROR
-      end
-      logger
+    @@logger
+  end
+
+  def self.new_logger : Logger
+    logger = Logger.new(STDOUT)
+    if ENV["DEBUG"]?
+      logger.level = Logger::INFO
+    else
+      logger.level = Logger::ERROR
     end
+    logger
   end
 end
