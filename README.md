@@ -5,12 +5,13 @@ Pure Crystal implementation of a Memcached client.
 
 ## Installation
 
-Add it to `Projectfile`
 
-```crystal
-deps do
-  github "comandeo/crystal-memcached"
-end
+Add this to your application's `shard.yml`:
+
+```yaml
+dependencies:
+  crystal-memcached:
+    github: comandeo/crystal-memcached
 ```
 
 ## Usage
