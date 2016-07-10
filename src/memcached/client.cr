@@ -176,6 +176,20 @@ module Memcached
       result
     end
 
+    # Fetch the value associated with the key.
+    # If a value is found, then it is returned.
+    # If a value is not found, the block will be invoked and its return value
+    # (given that it is not nil) will be written to the cache.
+    def fetch(key : String, expire : Number = 0, version : Number = 0) : String?
+      value = get(key)
+
+      if !value && (value = yield)
+        set(key, value, expire, version)
+      end
+
+      value
+    end
+
     # Deletes the key from memcached.
     def delete(key : String) : Bool
       send_request(
