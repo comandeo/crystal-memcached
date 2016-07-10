@@ -53,6 +53,7 @@ module Memcached
     def initialize(host = "localhost", port = 11211)
       Memcached.logger.info("Connecting to #{host}:#{port}")
       @socket = TCPSocket.new(host, port)
+      @socket.sync = false
     end
 
     #:nodoc:
