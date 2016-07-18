@@ -10,7 +10,7 @@ module Memcached
   class BadVersionException < UnsuccessfulOperationException
   end
 
-  #:nodoc:
+  # :nodoc:
   def self.logger
     @@logger
   end

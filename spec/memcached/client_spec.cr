@@ -34,7 +34,7 @@ describe Memcached::Client do
       "key2" => nil,
       "key3" => "value3",
       "key4" => nil,
-      "key5" => nil
+      "key5" => nil,
     })
   end
 
