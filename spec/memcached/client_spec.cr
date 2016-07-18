@@ -34,7 +34,7 @@ describe Memcached::Client do
       "key2" => nil,
       "key3" => "value3",
       "key4" => nil,
-      "key5" => nil
+      "key5" => nil,
     })
   end
 
@@ -163,5 +163,9 @@ describe Memcached::Client do
     result = client.fetch("key1") do
       nil
     end
+
+    result.should eq(nil)
+
+    client.get("key1").should eq(nil)
   end
 end

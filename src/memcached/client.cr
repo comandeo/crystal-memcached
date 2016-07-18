@@ -13,22 +13,22 @@ require "socket"
 # # Execute commands
 # client.set("key", "value")
 # client.set("another_key", "another_value")
-# client.get("key")   # "value"
+# client.get("key")                        # "value"
 # client.get_multi(["key", "another_key"]) # { "key" => "value", "another_key" => "another_value"}
 # client.delete("key")
 # ```
 module Memcached
   class Client
-    #:nodoc:
+    # :nodoc:
     HEADER_SIZE = 24
 
-    #:nodoc:
+    # :nodoc:
     MAGICS = {
       "request"  => 0x80_u8,
-      "response" => 0x81_u8
+      "response" => 0x81_u8,
     }
 
-    #:nodoc:
+    # :nodoc:
     OPCODES = {
       "get"       => 0x00_u8,
       "set"       => 0x01_u8,
@@ -42,7 +42,7 @@ module Memcached
       "getkq"     => 0x0d_u8,
       "append"    => 0x0e_u8,
       "prepend"   => 0x0f_u8,
-      "touch"     => 0x1c_u8
+      "touch"     => 0x1c_u8,
     }
 
     # Opens connection to memcached server
@@ -56,7 +56,7 @@ module Memcached
       @socket.sync = false
     end
 
-    #:nodoc:
+    # :nodoc:
     def finalize
       if !@socket.nil?
         @socket.close
@@ -83,7 +83,7 @@ module Memcached
           ((ex >> 24) & 0xFF).to_u8,
           ((ex >> 16) & 0xFF).to_u8,
           ((ex >> 8) & 0xFF).to_u8,
-          ( ex  & 0xFF).to_u8
+          (ex & 0xFF).to_u8,
         ],
         ver
       )
@@ -167,7 +167,7 @@ module Memcached
           value = String.new(
             response.body[
               response.key_length,
-              response.body.size - response.key_length
+              response.body.size - response.key_length,
             ]
           )
           result[key] = value
@@ -243,7 +243,7 @@ module Memcached
           ((exp >> 24) & 0xFF).to_u8,
           ((exp >> 16) & 0xFF).to_u8,
           ((exp >> 8) & 0xFF).to_u8,
-          (exp & 0xFF).to_u8
+          (exp & 0xFF).to_u8,
         ]
       )
       @socket.flush
@@ -264,7 +264,7 @@ module Memcached
           ((delay >> 24) & 0xFF).to_u8,
           ((delay >> 16) & 0xFF).to_u8,
           ((delay >> 8) & 0xFF).to_u8,
-          (delay & 0xFF).to_u8
+          (delay & 0xFF).to_u8,
         ]
       )
       @socket.flush
@@ -277,11 +277,10 @@ module Memcached
     #
     # If key does not exist, it will be set to initial_value.
     def increment(
-      key : String,
-      delta : Number,
-      initial_value = 0,
-      expire = 0
-    ) : Int64?
+                  key : String,
+                  delta : Number,
+                  initial_value = 0,
+                  expire = 0) : Int64?
       dl = delta.to_i64
       iv = initial_value.to_i64
       exp = expire.to_u32
@@ -296,20 +295,20 @@ module Memcached
           ((dl >> 32) & 0xFF).to_u8,
           ((dl >> 24) & 0xFF).to_u8,
           ((dl >> 16) & 0xFF).to_u8,
-          ((dl >> 8)  & 0xFF).to_u8,
-          ( dl         & 0xFF).to_u8,
+          ((dl >> 8) & 0xFF).to_u8,
+          (dl & 0xFF).to_u8,
           ((iv >> 56) & 0xFF).to_u8,
           ((iv >> 48) & 0xFF).to_u8,
           ((iv >> 40) & 0xFF).to_u8,
           ((iv >> 32) & 0xFF).to_u8,
           ((iv >> 24) & 0xFF).to_u8,
           ((iv >> 16) & 0xFF).to_u8,
-          ((iv >> 8)  & 0xFF).to_u8,
-          ( iv        & 0xFF).to_u8,
+          ((iv >> 8) & 0xFF).to_u8,
+          (iv & 0xFF).to_u8,
           ((exp >> 24) & 0xFF).to_u8,
           ((exp >> 16) & 0xFF).to_u8,
           ((exp >> 8) & 0xFF).to_u8,
-          ( exp  & 0xFF).to_u8
+          (exp & 0xFF).to_u8,
         ]
       )
       @socket.flush
@@ -324,41 +323,40 @@ module Memcached
     #
     # If key does not exist, it will be set to initial_value.
     def decrement(
-      key : String,
-      delta : Number,
-      initial_value : Number = 0,
-      expire : Number = 0
-    ) : Int64?
-    dl = delta.to_i64
-    iv = initial_value.to_i64
-    exp = expire.to_u32
-    send_request(
-      OPCODES["decrement"],
-      key.bytes,
-      Array(UInt8).new(0),
-      [
-        ((dl >> 56) & 0xFF).to_u8,
-        ((dl >> 48) & 0xFF).to_u8,
-        ((dl >> 40) & 0xFF).to_u8,
-        ((dl >> 32) & 0xFF).to_u8,
-        ((dl >> 24) & 0xFF).to_u8,
-        ((dl >> 16) & 0xFF).to_u8,
-        ((dl >> 8)  & 0xFF).to_u8,
-        ( dl         & 0xFF).to_u8,
-        ((iv >> 56) & 0xFF).to_u8,
-        ((iv >> 48) & 0xFF).to_u8,
-        ((iv >> 40) & 0xFF).to_u8,
-        ((iv >> 32) & 0xFF).to_u8,
-        ((iv >> 24) & 0xFF).to_u8,
-        ((iv >> 16) & 0xFF).to_u8,
-        ((iv >> 8)  & 0xFF).to_u8,
-        ( iv        & 0xFF).to_u8,
-        ((exp >> 24) & 0xFF).to_u8,
-        ((exp >> 16) & 0xFF).to_u8,
-        ((exp >> 8) & 0xFF).to_u8,
-        ( exp  & 0xFF).to_u8
-      ]
-    )
+                  key : String,
+                  delta : Number,
+                  initial_value : Number = 0,
+                  expire : Number = 0) : Int64?
+      dl = delta.to_i64
+      iv = initial_value.to_i64
+      exp = expire.to_u32
+      send_request(
+        OPCODES["decrement"],
+        key.bytes,
+        Array(UInt8).new(0),
+        [
+          ((dl >> 56) & 0xFF).to_u8,
+          ((dl >> 48) & 0xFF).to_u8,
+          ((dl >> 40) & 0xFF).to_u8,
+          ((dl >> 32) & 0xFF).to_u8,
+          ((dl >> 24) & 0xFF).to_u8,
+          ((dl >> 16) & 0xFF).to_u8,
+          ((dl >> 8) & 0xFF).to_u8,
+          (dl & 0xFF).to_u8,
+          ((iv >> 56) & 0xFF).to_u8,
+          ((iv >> 48) & 0xFF).to_u8,
+          ((iv >> 40) & 0xFF).to_u8,
+          ((iv >> 32) & 0xFF).to_u8,
+          ((iv >> 24) & 0xFF).to_u8,
+          ((iv >> 16) & 0xFF).to_u8,
+          ((iv >> 8) & 0xFF).to_u8,
+          (iv & 0xFF).to_u8,
+          ((exp >> 24) & 0xFF).to_u8,
+          ((exp >> 16) & 0xFF).to_u8,
+          ((exp >> 8) & 0xFF).to_u8,
+          (exp & 0xFF).to_u8,
+        ]
+      )
       @socket.flush
       read_response.try do |response|
         if response.successful? && response.opcode == OPCODES["decrement"]
@@ -400,38 +398,37 @@ module Memcached
     end
 
     private def send_request(
-      opcode : UInt8,
-      key : Array(UInt8),
-      value : Array(UInt8),
-      extras : Array(UInt8),
-      version : Int64 = 0
-    )
+                             opcode : UInt8,
+                             key : Array(UInt8),
+                             value : Array(UInt8),
+                             extras : Array(UInt8),
+                             version : Int64 = 0)
       v = version.to_i64
       extras_length = extras.size.to_u8
       key_length = key.size.to_u16
       total_length = (key.size + value.size + extras_length).to_u32
       # Header
       args = [
-        MAGICS["request"],                              # magic 0
-        opcode,                                         # opcode 1
-        ((key_length >> 8) & 0xFF).to_u8,               # key length 2
-        (key_length & 0xFF).to_u8,                      # key length 3
-        extras_length,                                  # extra length 4
-        0_u8,                                           # data type 5
-        0_u8, 0_u8,                                     # vbucket 6, 7
-        ((total_length >> 24) & 0xFF).to_u8,            # total body 8
-        ((total_length >> 16) & 0xFF).to_u8,            # total body 9
-        ((total_length >> 8) & 0xFF).to_u8,             # total body 10
-        (total_length & 0xFF).to_u8,                    # total body 11
-        0_u8, 0_u8, 0_u8, 0_u8,                         # opaque 12, 13, 14, 15
-        ((v >> 56) & 0xFF).to_u8,                       # cas 16
-        ((v >> 48) & 0xFF).to_u8,                       # cas 17
-        ((v >> 40) & 0xFF).to_u8,                       # cas 18
-        ((v >> 32) & 0xFF).to_u8,                       # cas 19
-        ((v >> 24) & 0xFF).to_u8,                       # cas 20
-        ((v >> 16) & 0xFF).to_u8,                       # cas 21
-        ((v >> 8)  & 0xFF).to_u8,                       # cas 22
-        ( v        & 0xFF).to_u8,                       # cas 23
+        MAGICS["request"],                   # magic 0
+        opcode,                              # opcode 1
+        ((key_length >> 8) & 0xFF).to_u8,    # key length 2
+        (key_length & 0xFF).to_u8,           # key length 3
+        extras_length,                       # extra length 4
+        0_u8,                                # data type 5
+        0_u8, 0_u8,                          # vbucket 6, 7
+        ((total_length >> 24) & 0xFF).to_u8, # total body 8
+        ((total_length >> 16) & 0xFF).to_u8, # total body 9
+        ((total_length >> 8) & 0xFF).to_u8,  # total body 10
+        (total_length & 0xFF).to_u8,         # total body 11
+        0_u8, 0_u8, 0_u8, 0_u8,              # opaque 12, 13, 14, 15
+        ((v >> 56) & 0xFF).to_u8,            # cas 16
+        ((v >> 48) & 0xFF).to_u8,            # cas 17
+        ((v >> 40) & 0xFF).to_u8,            # cas 18
+        ((v >> 32) & 0xFF).to_u8,            # cas 19
+        ((v >> 24) & 0xFF).to_u8,            # cas 20
+        ((v >> 16) & 0xFF).to_u8,            # cas 21
+        ((v >> 8) & 0xFF).to_u8,             # cas 22
+        (v & 0xFF).to_u8,                    # cas 23
       ]
       @socket.write(Slice(UInt8).new(args.to_unsafe, args.size))
 
@@ -454,9 +451,8 @@ module Memcached
         arr[3].to_i64 << 32 |
         arr[4].to_i64 << 24 |
         arr[5].to_i64 << 16 |
-        arr[6].to_i64 << 8  |
+        arr[6].to_i64 << 8 |
         arr[7].to_i64
     end
-
   end
 end
