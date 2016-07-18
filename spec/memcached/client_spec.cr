@@ -129,4 +129,39 @@ describe Memcached::Client do
     client.decrement("dkey", 2, 0).should eq(3)
   end
 
+  it "fetches" do
+    client = Memcached::Client.new
+    client.flush
+
+    result = client.fetch("key1") do
+      "value42"
+    end
+
+    result.should eq("value42")
+
+    client.get("key1").should eq("value42")
+  end
+
+  it "doesn't call set if the value is already present" do
+    client = Memcached::Client.new
+    client.flush
+    client.set("key1", "value1")
+
+    result = client.fetch("key1") do
+      "value2"
+    end
+
+    result.should eq("value1")
+
+    client.get("key1").should eq("value1")
+  end
+
+  it "doesn't call set if the block yields a nil" do
+    client = Memcached::Client.new
+    client.flush
+
+    result = client.fetch("key1") do
+      nil
+    end
+  end
 end
