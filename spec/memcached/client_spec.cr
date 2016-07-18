@@ -163,5 +163,9 @@ describe Memcached::Client do
     result = client.fetch("key1") do
       nil
     end
+
+    result.should eq(nil)
+
+    client.get("key1").should eq(nil)
   end
 end
