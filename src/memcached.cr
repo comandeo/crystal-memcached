@@ -18,7 +18,7 @@ module Memcached
   def self.new_logger : Logger
     logger = Logger.new(STDOUT)
     if ENV["DEBUG"]?
-      logger.level = Logger::INFO
+      logger.level = Logger::DEBUG
     else
       logger.level = Logger::ERROR
     end
