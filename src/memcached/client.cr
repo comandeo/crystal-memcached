@@ -392,7 +392,14 @@ module Memcached
         @socket.read(extras)
       end
       if body_length > 0
-        @socket.read(body)
+        bytes_left_to_read = body_length
+        while bytes_left_to_read > 0
+          buffer = Slice(UInt8).new(bytes_left_to_read)
+          bytes_read = @socket.read(buffer)
+          body_offset = body_length - bytes_left_to_read
+          buffer.copy_to(body + body_offset)
+          bytes_left_to_read -= bytes_read
+        end
       end
       Response.new(status_code, opcode, key_length, body, extras, version)
     end
