@@ -409,7 +409,7 @@ module Memcached
                              key : Array(UInt8),
                              value : Array(UInt8),
                              extras : Array(UInt8),
-                             version : Int64 = 0)
+                             version : Int64 = 0_i64)
       v = version.to_i64
       extras_length = extras.size.to_u8
       key_length = key.size.to_u16
