@@ -51,7 +51,7 @@ module Memcached
     # * host : String - memcached host
     # * port : Number - memcached port
     def initialize(host = "localhost", port = 11211)
-      Memcached.logger.info("Connecting to #{host}:#{port}")
+      Log.info { "Connecting to #{host}:#{port}" }
       @socket = TCPSocket.new(host, port)
       @socket.sync = false
     end
@@ -158,7 +158,7 @@ module Memcached
       )
       @socket.flush
       while response = read_response
-        Memcached.logger.info(String.new(response.body))
+        Log.info { String.new(response.body) }
         case response.opcode
         when OPCODES["noop"]
           return result
@@ -171,6 +171,8 @@ module Memcached
             ]
           )
           result[key] = value
+        else
+          # unknown optcode
         end
       end
       result
@@ -371,7 +373,7 @@ module Memcached
       if response_header[0] != MAGICS["response"]
         return nil
       end
-      Memcached.logger.info("Response received")
+      Log.info { "Response received" }
       opcode = response_header[1]
       key_length = response_header[2].to_u32 << 8 |
         response_header[3].to_u32
@@ -381,10 +383,10 @@ module Memcached
         response_header[10].to_u32 << 8 |
         response_header[11].to_u32
       body_length = (total_length - extras_length).to_i32
-      Memcached.logger.info("Total length: #{total_length}, \
-        extras_length: #{extras_length}, body_length: #{body_length}")
+      Log.info { "Total length: #{total_length}, \
+        extras_length: #{extras_length}, body_length: #{body_length}" }
       status_code = response_header[7]
-      Memcached.logger.info("Response status code: #{status_code}")
+      Log.info { "Response status code: #{status_code}" }
       version = to_int_64(response_header[16, 8])
       extras = Slice(UInt8).new(extras_length)
       body = Slice(UInt8).new(body_length)
