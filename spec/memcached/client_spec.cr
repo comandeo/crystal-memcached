@@ -9,11 +9,11 @@ describe Memcached::Client do
   end
 
   it "sets and then gets a large value" do
-      client = Memcached::Client.new
-      client.flush
-      value = "LargeValue" * 1000
-      client.set("LargeKey", value).should_not eq(nil)
-      client.get("LargeKey").should eq(value)
+    client = Memcached::Client.new
+    client.flush
+    value = "LargeValue" * 1000
+    client.set("LargeKey", value).should_not eq(nil)
+    client.get("LargeKey").should eq(value)
   end
 
   it "does not get non existing key" do
