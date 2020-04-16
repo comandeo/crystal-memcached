@@ -4,4 +4,6 @@ version: 0.2.2
 authors:
   - Dmitry Rybakov <dmitry.rybakov@gmail.com>
 
+crystal: 0.34.0
+
 license: MIT
