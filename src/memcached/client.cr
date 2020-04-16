@@ -279,10 +279,11 @@ module Memcached
     #
     # If key does not exist, it will be set to initial_value.
     def increment(
-                  key : String,
-                  delta : Number,
-                  initial_value = 0,
-                  expire = 0) : Int64?
+      key : String,
+      delta : Number,
+      initial_value = 0,
+      expire = 0
+    ) : Int64?
       dl = delta.to_i64
       iv = initial_value.to_i64
       exp = expire.to_u32
@@ -325,10 +326,11 @@ module Memcached
     #
     # If key does not exist, it will be set to initial_value.
     def decrement(
-                  key : String,
-                  delta : Number,
-                  initial_value : Number = 0,
-                  expire : Number = 0) : Int64?
+      key : String,
+      delta : Number,
+      initial_value : Number = 0,
+      expire : Number = 0
+    ) : Int64?
       dl = delta.to_i64
       iv = initial_value.to_i64
       exp = expire.to_u32
@@ -376,12 +378,12 @@ module Memcached
       Log.info { "Response received" }
       opcode = response_header[1]
       key_length = response_header[2].to_u32 << 8 |
-        response_header[3].to_u32
+                   response_header[3].to_u32
       extras_length = response_header[4].to_i32
       total_length = response_header[8].to_u32 << 24 |
-        response_header[9].to_u32 << 16 |
-        response_header[10].to_u32 << 8 |
-        response_header[11].to_u32
+                     response_header[9].to_u32 << 16 |
+                     response_header[10].to_u32 << 8 |
+                     response_header[11].to_u32
       body_length = (total_length - extras_length).to_i32
       Log.info { "Total length: #{total_length}, \
         extras_length: #{extras_length}, body_length: #{body_length}" }
@@ -407,11 +409,12 @@ module Memcached
     end
 
     private def send_request(
-                             opcode : UInt8,
-                             key : Array(UInt8),
-                             value : Array(UInt8),
-                             extras : Array(UInt8),
-                             version : Int64 = 0_i64)
+      opcode : UInt8,
+      key : Array(UInt8),
+      value : Array(UInt8),
+      extras : Array(UInt8),
+      version : Int64 = 0_i64
+    )
       v = version.to_i64
       extras_length = extras.size.to_u8
       key_length = key.size.to_u16
