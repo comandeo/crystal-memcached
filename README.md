@@ -1,5 +1,6 @@
 # Crystal Memcached
-[![Build Status](https://travis-ci.org/comandeo/crystal-memcached.svg?branch=master)](https://travis-ci.org/comandeo/crystal-memcached)
+
+[![Crystal CI](https://github.com/comandeo/crystal-memcached/actions/workflows/crystal.yml/badge.svg)](https://github.com/comandeo/crystal-memcached/actions/workflows/crystal.yml)
 
 Pure Crystal implementation of a Memcached client.
 
