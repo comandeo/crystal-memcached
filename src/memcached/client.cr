@@ -3,7 +3,7 @@ require "socket"
 # This class is a client for memcached storage
 #
 # ** Usage **
-# ```crystal
+# ```
 # # Require package
 # require "memcached"
 #

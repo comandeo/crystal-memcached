@@ -1,0 +1,50 @@
+name: Crystal CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  check_format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Crystal
+        uses: oprypin/install-crystal@v1
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: shards install
+      - name: Check format
+        run: crystal tool format --check
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crystal: [latest, nightly]
+    services:
+      # Label used to access the service container
+      memcached:
+        # Docker Hub image
+        image: memcached
+        # Set health checks to wait until memcached has started
+        options: >-
+          --health-cmd "timeout 5 bash -c 'cat < /dev/null > /dev/udp/127.0.0.1/11211'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps udp port 11211 on service container to the host
+          - 11211:11211
+    steps:
+      - name: Install Crystal
+        uses: oprypin/install-crystal@v1
+        with:
+          crystal: ${{ matrix.crystal }}
+      - name: Check out repository code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: shards install
+      - name: Run tests
+        run: crystal spec
