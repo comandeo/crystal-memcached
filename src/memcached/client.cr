@@ -24,26 +24,28 @@ module Memcached
 
     # :nodoc:
     MAGICS = {
-      "request"  => 0x80_u8,
-      "response" => 0x81_u8,
+      request:  0x80_u8,
+      response: 0x81_u8,
     }
 
     # :nodoc:
     OPCODES = {
-      "get"       => 0x00_u8,
-      "set"       => 0x01_u8,
-      "delete"    => 0x04_u8,
-      "increment" => 0x05_u8,
-      "decrement" => 0x06_u8,
-      "flush"     => 0x08_u8,
-      "getq"      => 0x09_u8,
-      "noop"      => 0x0a_u8,
-      "getk"      => 0x0c_u8,
-      "getkq"     => 0x0d_u8,
-      "append"    => 0x0e_u8,
-      "prepend"   => 0x0f_u8,
-      "touch"     => 0x1c_u8,
+      get:       0x00_u8,
+      set:       0x01_u8,
+      delete:    0x04_u8,
+      increment: 0x05_u8,
+      decrement: 0x06_u8,
+      flush:     0x08_u8,
+      getq:      0x09_u8,
+      noop:      0x0a_u8,
+      getk:      0x0c_u8,
+      getkq:     0x0d_u8,
+      append:    0x0e_u8,
+      prepend:   0x0f_u8,
+      touch:     0x1c_u8,
     }
+
+    @socket : TCPSocket
 
     # Opens connection to memcached server
     #
@@ -51,16 +53,14 @@ module Memcached
     # * host : String - memcached host
     # * port : Number - memcached port
     def initialize(host = "localhost", port = 11211)
-      Log.info { "Connecting to #{host}:#{port}" }
+      Log.debug { "Connecting to #{host}:#{port}" }
       @socket = TCPSocket.new(host, port)
       @socket.sync = false
     end
 
     # :nodoc:
     def finalize
-      if !@socket.nil?
-        @socket.close
-      end
+      @socket.close
     end
 
     # Set key - value pair in memcached.
@@ -74,22 +74,24 @@ module Memcached
     def set(key : String, value : String, expire : Number = 0, version : Number = 0) : Int64
       ex = expire.to_u32
       ver = version.to_i64
+      buffer = StaticArray[
+        0xde_u8, 0xad_u8, 0xbe_u8, 0xef_u8,
+        ((ex >> 24) & 0xFF).to_u8,
+        ((ex >> 16) & 0xFF).to_u8,
+        ((ex >> 8) & 0xFF).to_u8,
+        (ex & 0xFF).to_u8,
+      ]
+      ex_slice = Bytes.new(buffer.to_unsafe, buffer.size)
       send_request(
-        OPCODES["set"],
-        key.bytes,
-        value.bytes,
-        [
-          0xde_u8, 0xad_u8, 0xbe_u8, 0xef_u8,
-          ((ex >> 24) & 0xFF).to_u8,
-          ((ex >> 16) & 0xFF).to_u8,
-          ((ex >> 8) & 0xFF).to_u8,
-          (ex & 0xFF).to_u8,
-        ],
+        OPCODES[:set],
+        key.to_slice,
+        value.to_slice,
+        ex_slice,
         ver
       )
       @socket.flush
       read_response.try do |response|
-        if response.successful? && response.opcode == OPCODES["set"]
+        if response.successful? && response.opcode == OPCODES[:set]
           response.version
         elsif response.status_is?("key_exists")
           raise BadVersionException.new
@@ -102,14 +104,14 @@ module Memcached
     # Get single key value from memcached.
     def get(key : String) : String?
       send_request(
-        OPCODES["get"],
-        key.bytes,
-        Array(UInt8).new(0),
-        Array(UInt8).new(0)
+        OPCODES[:get],
+        key.to_slice,
+        Bytes.empty,
+        Bytes.empty,
       )
       @socket.flush
       read_response.try do |response|
-        if response.successful? && response.opcode == OPCODES["get"]
+        if response.successful? && response.opcode == OPCODES[:get]
           String.new(response.body)
         else
           nil
@@ -120,14 +122,14 @@ module Memcached
     # Get single key value and its current version.
     def get_with_version(key : String) : Tuple(String, Int64)?
       send_request(
-        OPCODES["get"],
-        key.bytes,
-        Array(UInt8).new(0),
-        Array(UInt8).new(0)
+        OPCODES[:get],
+        key.to_slice,
+        Bytes.empty,
+        Bytes.empty,
       )
       @socket.flush
       read_response.try do |response|
-        if response.successful? && response.opcode == OPCODES["get"]
+        if response.successful? && response.opcode == OPCODES[:get]
           Tuple.new(String.new(response.body), response.version)
         else
           nil
@@ -144,25 +146,25 @@ module Memcached
       keys.each do |key|
         result[key] = nil
         send_request(
-          OPCODES["getkq"],
-          key.bytes,
-          Array(UInt8).new(0),
-          Array(UInt8).new(0)
+          OPCODES[:getkq],
+          key.to_slice,
+          Bytes.empty,
+          Bytes.empty,
         )
       end
       send_request(
-        OPCODES["noop"],
-        Array(UInt8).new(0),
-        Array(UInt8).new(0),
-        Array(UInt8).new(0)
+        OPCODES[:noop],
+        Bytes.empty,
+        Bytes.empty,
+        Bytes.empty,
       )
       @socket.flush
       while response = read_response
-        Log.info { String.new(response.body) }
+        Log.debug { String.new(response.body) }
         case response.opcode
-        when OPCODES["noop"]
+        when OPCODES[:noop]
           return result
-        when OPCODES["getkq"]
+        when OPCODES[:getkq]
           key = String.new(response.body[0, response.key_length])
           value = String.new(
             response.body[
@@ -195,62 +197,64 @@ module Memcached
     # Deletes the key from memcached.
     def delete(key : String) : Bool
       send_request(
-        OPCODES["delete"],
-        key.bytes,
-        Array(UInt8).new(0),
-        Array(UInt8).new(0)
+        OPCODES[:delete],
+        key.to_slice,
+        Bytes.empty,
+        Bytes.empty,
       )
       @socket.flush
       read_response.try do |response|
-        response.successful? && response.opcode == OPCODES["delete"]
+        response.successful? && response.opcode == OPCODES[:delete]
       end || false
     end
 
     # Append value afrer an existing key value
     def append(key : String, value : String) : Bool
       send_request(
-        OPCODES["append"],
-        key.bytes,
-        value.bytes,
-        Array(UInt8).new(0)
+        OPCODES[:append],
+        key.to_slice,
+        value.to_slice,
+        Bytes.empty,
       )
       @socket.flush
       read_response.try do |response|
-        response.successful? && response.opcode == OPCODES["append"]
+        response.successful? && response.opcode == OPCODES[:append]
       end || false
     end
 
     # Prepend value before an existing key value
     def prepend(key : String, value : String) : Bool
       send_request(
-        OPCODES["prepend"],
-        key.bytes,
-        value.bytes,
-        Array(UInt8).new(0)
+        OPCODES[:prepend],
+        key.to_slice,
+        value.to_slice,
+        Bytes.empty,
       )
       @socket.flush
       read_response.try do |response|
-        response.successful? && response.opcode == OPCODES["prepend"]
+        response.successful? && response.opcode == OPCODES[:prepend]
       end || false
     end
 
     # Update key expiration time
     def touch(key : String, expire : Number) : Bool
       exp = expire.to_u32
+      buffer = StaticArray[
+        ((exp >> 24) & 0xFF).to_u8,
+        ((exp >> 16) & 0xFF).to_u8,
+        ((exp >> 8) & 0xFF).to_u8,
+        (exp & 0xFF).to_u8,
+      ]
+      exp_slice = Bytes.new(buffer.to_unsafe, 4)
       send_request(
-        OPCODES["touch"],
-        key.bytes,
-        Array(UInt8).new(0),
-        [
-          ((exp >> 24) & 0xFF).to_u8,
-          ((exp >> 16) & 0xFF).to_u8,
-          ((exp >> 8) & 0xFF).to_u8,
-          (exp & 0xFF).to_u8,
-        ]
+        OPCODES[:touch],
+        key.to_slice,
+        Bytes.empty,
+        exp_slice,
       )
       @socket.flush
       read_response.try do |response|
-        response.successful? && response.opcode == OPCODES["touch"]
+        response.successful? && response.opcode == OPCODES[:touch]
       end || false
     end
 
@@ -258,20 +262,22 @@ module Memcached
     #
     # Passing delay parameter postpone the removal.
     def flush(delay = 0_u32) : Bool
+      buffer = StaticArray[
+        ((delay >> 24) & 0xFF).to_u8,
+        ((delay >> 16) & 0xFF).to_u8,
+        ((delay >> 8) & 0xFF).to_u8,
+        (delay & 0xFF).to_u8,
+      ]
+      delay_slice = Bytes.new(buffer.to_unsafe, 4)
       send_request(
-        OPCODES["flush"],
-        Array(UInt8).new(0),
-        Array(UInt8).new(0),
-        [
-          ((delay >> 24) & 0xFF).to_u8,
-          ((delay >> 16) & 0xFF).to_u8,
-          ((delay >> 8) & 0xFF).to_u8,
-          (delay & 0xFF).to_u8,
-        ]
+        OPCODES[:flush],
+        Bytes.empty,
+        Bytes.empty,
+        delay_slice
       )
       @socket.flush
       read_response.try do |response|
-        response.successful? && response.opcode == OPCODES["flush"]
+        response.successful? && response.opcode == OPCODES[:flush]
       end || false
     end
 
@@ -287,36 +293,39 @@ module Memcached
       dl = delta.to_i64
       iv = initial_value.to_i64
       exp = expire.to_u32
+      buffer = StaticArray[
+        ((dl >> 56) & 0xFF).to_u8,
+        ((dl >> 48) & 0xFF).to_u8,
+        ((dl >> 40) & 0xFF).to_u8,
+        ((dl >> 32) & 0xFF).to_u8,
+        ((dl >> 24) & 0xFF).to_u8,
+        ((dl >> 16) & 0xFF).to_u8,
+        ((dl >> 8) & 0xFF).to_u8,
+        (dl & 0xFF).to_u8,
+        ((iv >> 56) & 0xFF).to_u8,
+        ((iv >> 48) & 0xFF).to_u8,
+        ((iv >> 40) & 0xFF).to_u8,
+        ((iv >> 32) & 0xFF).to_u8,
+        ((iv >> 24) & 0xFF).to_u8,
+        ((iv >> 16) & 0xFF).to_u8,
+        ((iv >> 8) & 0xFF).to_u8,
+        (iv & 0xFF).to_u8,
+        ((exp >> 24) & 0xFF).to_u8,
+        ((exp >> 16) & 0xFF).to_u8,
+        ((exp >> 8) & 0xFF).to_u8,
+        (exp & 0xFF).to_u8,
+      ]
+      args_slice = Bytes.new(buffer.to_unsafe, buffer.size)
+
       send_request(
-        OPCODES["increment"],
-        key.bytes,
-        Array(UInt8).new(0),
-        [
-          ((dl >> 56) & 0xFF).to_u8,
-          ((dl >> 48) & 0xFF).to_u8,
-          ((dl >> 40) & 0xFF).to_u8,
-          ((dl >> 32) & 0xFF).to_u8,
-          ((dl >> 24) & 0xFF).to_u8,
-          ((dl >> 16) & 0xFF).to_u8,
-          ((dl >> 8) & 0xFF).to_u8,
-          (dl & 0xFF).to_u8,
-          ((iv >> 56) & 0xFF).to_u8,
-          ((iv >> 48) & 0xFF).to_u8,
-          ((iv >> 40) & 0xFF).to_u8,
-          ((iv >> 32) & 0xFF).to_u8,
-          ((iv >> 24) & 0xFF).to_u8,
-          ((iv >> 16) & 0xFF).to_u8,
-          ((iv >> 8) & 0xFF).to_u8,
-          (iv & 0xFF).to_u8,
-          ((exp >> 24) & 0xFF).to_u8,
-          ((exp >> 16) & 0xFF).to_u8,
-          ((exp >> 8) & 0xFF).to_u8,
-          (exp & 0xFF).to_u8,
-        ]
+        OPCODES[:increment],
+        key.to_slice,
+        Bytes.empty,
+        args_slice,
       )
       @socket.flush
       read_response.try do |response|
-        if response.successful? && response.opcode == OPCODES["increment"]
+        if response.successful? && response.opcode == OPCODES[:increment]
           to_int_64(response.body)
         end
       end
@@ -334,36 +343,39 @@ module Memcached
       dl = delta.to_i64
       iv = initial_value.to_i64
       exp = expire.to_u32
+      buffer = StaticArray[
+        ((dl >> 56) & 0xFF).to_u8,
+        ((dl >> 48) & 0xFF).to_u8,
+        ((dl >> 40) & 0xFF).to_u8,
+        ((dl >> 32) & 0xFF).to_u8,
+        ((dl >> 24) & 0xFF).to_u8,
+        ((dl >> 16) & 0xFF).to_u8,
+        ((dl >> 8) & 0xFF).to_u8,
+        (dl & 0xFF).to_u8,
+        ((iv >> 56) & 0xFF).to_u8,
+        ((iv >> 48) & 0xFF).to_u8,
+        ((iv >> 40) & 0xFF).to_u8,
+        ((iv >> 32) & 0xFF).to_u8,
+        ((iv >> 24) & 0xFF).to_u8,
+        ((iv >> 16) & 0xFF).to_u8,
+        ((iv >> 8) & 0xFF).to_u8,
+        (iv & 0xFF).to_u8,
+        ((exp >> 24) & 0xFF).to_u8,
+        ((exp >> 16) & 0xFF).to_u8,
+        ((exp >> 8) & 0xFF).to_u8,
+        (exp & 0xFF).to_u8,
+      ]
+      args_slice = Bytes.new(buffer.to_unsafe, buffer.size)
+
       send_request(
-        OPCODES["decrement"],
-        key.bytes,
-        Array(UInt8).new(0),
-        [
-          ((dl >> 56) & 0xFF).to_u8,
-          ((dl >> 48) & 0xFF).to_u8,
-          ((dl >> 40) & 0xFF).to_u8,
-          ((dl >> 32) & 0xFF).to_u8,
-          ((dl >> 24) & 0xFF).to_u8,
-          ((dl >> 16) & 0xFF).to_u8,
-          ((dl >> 8) & 0xFF).to_u8,
-          (dl & 0xFF).to_u8,
-          ((iv >> 56) & 0xFF).to_u8,
-          ((iv >> 48) & 0xFF).to_u8,
-          ((iv >> 40) & 0xFF).to_u8,
-          ((iv >> 32) & 0xFF).to_u8,
-          ((iv >> 24) & 0xFF).to_u8,
-          ((iv >> 16) & 0xFF).to_u8,
-          ((iv >> 8) & 0xFF).to_u8,
-          (iv & 0xFF).to_u8,
-          ((exp >> 24) & 0xFF).to_u8,
-          ((exp >> 16) & 0xFF).to_u8,
-          ((exp >> 8) & 0xFF).to_u8,
-          (exp & 0xFF).to_u8,
-        ]
+        OPCODES[:decrement],
+        key.to_slice,
+        Bytes.empty,
+        args_slice
       )
       @socket.flush
       read_response.try do |response|
-        if response.successful? && response.opcode == OPCODES["decrement"]
+        if response.successful? && response.opcode == OPCODES[:decrement]
           to_int_64(response.body)
         end
       end
@@ -372,10 +384,10 @@ module Memcached
     private def read_response
       response_header = Slice(UInt8).new(HEADER_SIZE)
       @socket.read_fully(response_header)
-      if response_header[0] != MAGICS["response"]
+      if response_header[0] != MAGICS[:response]
         return nil
       end
-      Log.info { "Response received" }
+      Log.debug { "Response received" }
       opcode = response_header[1]
       key_length = response_header[2].to_u32 << 8 |
                    response_header[3].to_u32
@@ -385,34 +397,24 @@ module Memcached
                      response_header[10].to_u32 << 8 |
                      response_header[11].to_u32
       body_length = (total_length - extras_length).to_i32
-      Log.info { "Total length: #{total_length}, \
+      Log.debug { "Total length: #{total_length}, \
         extras_length: #{extras_length}, body_length: #{body_length}" }
       status_code = response_header[7]
-      Log.info { "Response status code: #{status_code}" }
+      Log.debug { "Response status code: #{status_code}" }
       version = to_int_64(response_header[16, 8])
       extras = Slice(UInt8).new(extras_length)
       body = Slice(UInt8).new(body_length)
-      if extras_length > 0
-        @socket.read(extras)
-      end
-      if body_length > 0
-        bytes_left_to_read = body_length
-        while bytes_left_to_read > 0
-          buffer = Slice(UInt8).new(bytes_left_to_read)
-          bytes_read = @socket.read(buffer)
-          body_offset = body_length - bytes_left_to_read
-          buffer.copy_to(body + body_offset)
-          bytes_left_to_read -= bytes_read
-        end
-      end
+      @socket.read_fully extras
+      @socket.read_fully body
+
       Response.new(status_code, opcode, key_length, body, extras, version)
     end
 
     private def send_request(
       opcode : UInt8,
-      key : Array(UInt8),
-      value : Array(UInt8),
-      extras : Array(UInt8),
+      key : Bytes,
+      value : Bytes,
+      extras : Bytes,
       version : Int64 = 0_i64
     )
       v = version.to_i64
@@ -420,8 +422,8 @@ module Memcached
       key_length = key.size.to_u16
       total_length = (key.size + value.size + extras_length).to_u32
       # Header
-      args = [
-        MAGICS["request"],                   # magic 0
+      args = Bytes[
+        MAGICS[:request],                    # magic 0
         opcode,                              # opcode 1
         ((key_length >> 8) & 0xFF).to_u8,    # key length 2
         (key_length & 0xFF).to_u8,           # key length 3
@@ -442,18 +444,12 @@ module Memcached
         ((v >> 8) & 0xFF).to_u8,             # cas 22
         (v & 0xFF).to_u8,                    # cas 23
       ]
-      @socket.write(Slice(UInt8).new(args.to_unsafe, args.size))
+      @socket.write args
 
       # Body
-      if extras.size > 0
-        @socket.write(Slice(UInt8).new(extras.to_unsafe, extras.size))
-      end
-      if key.size > 0
-        @socket.write(Slice(UInt8).new(key.to_unsafe, key.size))
-      end
-      if value.size > 0
-        @socket.write(Slice(UInt8).new(value.to_unsafe, value.size))
-      end
+      @socket.write extras
+      @socket.write key
+      @socket.write value
     end
 
     private def to_int_64(arr : Slice(UInt8)) : Int64
